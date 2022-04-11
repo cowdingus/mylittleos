@@ -1,4 +1,3 @@
-OBJECTS = loader.o kmain.o io.o
 CC = gcc
 CFLAGS = -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector \
          -nostartfiles -nodefaultlibs -Wall -Wextra -Werror -Iinc -c
@@ -6,23 +5,30 @@ LDFLAGS = -T link.ld -melf_i386
 AS = nasm
 ASFLAGS = -f elf
 
-all: kernel.elf
+BUILD_DIR = build/
+SRC_DIR = src/
+INC_DIR = inc/
 
-kernel.elf: $(OBJECTS)
-	ld $(LDFLAGS) $(OBJECTS) -o kernel.elf
+_OBJS = loader.o kmain.o io.o
+OBJS = $(patsubst %,$(BUILD_DIR)/%,$(_OBJS))
 
-os.iso: kernel.elf
-	cp kernel.elf iso/boot/kernel.elf
-	grub-mkrescue -o os.iso iso
+all: $(BUILD_DIR)/kernel.elf
 
-run: os.iso
+$(BUILD_DIR)/kernel.elf: $(OBJS)
+	ld $(LDFLAGS) $(OBJS) -o $@
+
+$(BUILD_DIR)/os.iso: $(BUILD_DIR)/kernel.elf
+	cp $< iso/boot/kernel.elf
+	grub-mkrescue -o $@ iso
+
+run: $(BUILD_DIR)/os.iso
 	bochs -f bochsrc -q
 
-%.o: %.c
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS)  $< -o $@
 
-%.o: %.asm
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
 
 clean:
-	rm -rf *.o kernel.elf os.iso
+	rm -rf build/*
